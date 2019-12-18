@@ -12,8 +12,8 @@ const pool = new Pool({
     port: process.env.LAB_PG_PORT
 });
 
-const stream = fs.createReadStream("src/data/stories.csv");
-const errFile = fs.createWriteStream("src/data/errors-stories.csv", {
+const stream = fs.createReadStream("../data/stories.csv");
+const errFile = fs.createWriteStream("../data/errors-stories.csv", {
     flags: "a"
 });
 let csvData = [];
@@ -28,6 +28,7 @@ let csvStream = fastcsv
     });
 
 const query = "INSERT INTO stories (launch_date, title, privacy, likes) VALUES ($1, $2, $3, $4)";
+let errCount = 0;
 
 pool.connect((err, client, done) => {
     if (err) throw err;
@@ -36,6 +37,7 @@ pool.connect((err, client, done) => {
         csvData.forEach(row => {
             client.query(query, row, (err, res) => {
                 if (err) {
+                    errCount++;
                     errFile.write(row.toString());
                 } else {
                     console.log("Inserted row:", row);
@@ -43,6 +45,9 @@ pool.connect((err, client, done) => {
             });
         });
     } finally {
+        if (errCount > 0) {
+            console.log("There was at least one error, check the data directory for error file");
+        }
         done();
     }
 });
